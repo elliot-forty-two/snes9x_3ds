@@ -749,10 +749,14 @@ void S9xLoadSDD1Data ()
 const char * S9xGetFilename (const char *ex)
 {
 	static char	s[PATH_MAX + 1];
+#ifndef EMBEDED_ROM
 	char		drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 	_splitpath(Memory.ROMFilename, drive, dir, fname, ext);
 	snprintf(s, PATH_MAX + 1, "%s/%s%s", dir, fname, ex);
+#else
+	snprintf(s, PATH_MAX + 1, "/snes/%s%s", Memory.ROMName, ex);
+#endif
 
 	return (s);
 }
@@ -760,6 +764,7 @@ const char * S9xGetFilename (const char *ex)
 const char * S9xGetFilenameInc (const char *ex)
 {
 	static char	s[PATH_MAX + 1];
+#ifndef EMBEDED_ROM
 	char		drive[_MAX_DRIVE + 1], dir[_MAX_DIR + 1], fname[_MAX_FNAME + 1], ext[_MAX_EXT + 1];
 
 	unsigned int	i = 0;
@@ -771,6 +776,14 @@ const char * S9xGetFilenameInc (const char *ex)
 	do
 		snprintf(s, PATH_MAX + 1, "%s/%s.%03d%s", dir, fname, i++, ex);
 	while (stat(s, &buf) == 0 && i < 1000);
+#else
+	unsigned int	i = 0;
+	struct stat		buf;
+
+	do
+		snprintf(s, PATH_MAX + 1, "/snes/%s.%03d%s", Memory.ROMName, i++, ex);
+	while (stat(s, &buf) == 0 && i < 1000);
+#endif
 
 	return (s);
 }

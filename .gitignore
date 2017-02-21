@@ -1,0 +1,4 @@
+build
+*.smdh
+*.elf
+romfs/rom.smc

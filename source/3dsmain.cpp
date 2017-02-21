@@ -418,6 +418,9 @@ bool settingsUpdateAllSettings(bool updateGameSettings = true)
 bool settingsReadWriteFullListByGame(bool writeMode)
 {
     bool success = config3dsOpenFile(S9xGetFilename(".cfg"), writeMode);
+#ifdef EMBEDED_ROM
+	if (!success) success = config3dsOpenFile("romfs:/rom.cfg", writeMode);
+#endif
     if (!success)
         return false;
 
@@ -564,7 +567,11 @@ void emulatorLoadRom()
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
     consoleClear();
     settingsSave(false);
+#ifdef EMBEDED_ROM
+    snprintf(romFileNameFullPath, _MAX_PATH, "romfs:/rom.smc");
+#else
     snprintf(romFileNameFullPath, _MAX_PATH, "%s%s", file3dsGetCurrentDir(), romFileName);
+#endif
 
     impl3dsLoadROM(romFileNameFullPath);
 
@@ -692,6 +699,7 @@ bool menuCopyCheats(bool copyMenuToSettings)
 }
 
 
+#ifndef EMBEDED_ROM
 //----------------------------------------------------------------------
 // Start up menu.
 //----------------------------------------------------------------------
@@ -771,6 +779,7 @@ void menuSelectFile(void)
 
     emulatorLoadRom();
 }
+#endif
 
 
 //----------------------------------------------------------------------
@@ -816,7 +825,9 @@ void menuPause()
     menu3dsAddTab("Emulator", emulatorMenu, emulatorMenuCount);
     menu3dsAddTab("Options", optionMenu, optionMenuCount);
     menu3dsAddTab("Cheats", cheatMenu, cheatMenuCount);
+#ifndef EMBEDED_ROM
     menu3dsAddTab("Select ROM", fileMenu, totalRomFileCount);
+#endif
 
     menuCopySettings(false);
     menuCopyCheats(false);
@@ -825,9 +836,11 @@ void menuPause()
     menu3dsSetTabSubTitle(0, NULL);
     menu3dsSetTabSubTitle(1, NULL);
     menu3dsSetTabSubTitle(2, NULL);
+#ifndef EMBEDED_ROM
     menu3dsSetTabSubTitle(3, file3dsGetCurrentDir());
     if (previousFileID >= 0)
         menu3dsSetSelectedItemIndexByID(3, previousFileID);
+#endif
     menu3dsSetCurrentMenuTab(0);
     menu3dsSetTransferGameScreen(true);
 
@@ -851,6 +864,7 @@ void menuPause()
 
             break;
         }
+#ifndef EMBEDED_ROM
         else if (selection < 1000)
         {
             // Load ROM
@@ -879,6 +893,7 @@ void menuPause()
                 break;
             }
         }
+#endif
         else if (selection >= 2001 && selection <= 2010)
         {
             int slot = selection - 2000;
@@ -1031,6 +1046,7 @@ char *noCheatsText[] {
     "    No cheats available for this game ",
     "",
     "    To enable cheats:  ",
+#ifndef EMBEDED_ROM
     "      Copy your .CHT/.CHX file into the same folder as  ",
     "      ROM file and make sure it has the same name. ",
     "",
@@ -1038,6 +1054,15 @@ char *noCheatsText[] {
     "          MyGame.smc ",
     "      Then your cheat filename must be: ",
     "          MyGame.cht or MyGame.chx ",
+#else
+    "      Copy your .CHT/.CHX file into the /snes folder and ",
+    "      make sure it has the same name as your game. ",
+    "",
+    "      If your ROM's internal name is: ",
+    "          MY GAME ",
+    "      Then your cheat filename must be: ",
+    "          MY GAME.cht or MY GAME.chx ",
+#endif
     "",
     "    Refer to readme.md for the .CHX file format. ",
     ""
@@ -1108,12 +1133,15 @@ void emulatorInitialize()
 
     ui3dsInitialize();
 
-    /*if (romfsInit()!=0)
+#ifdef EMBEDED_ROM
+    if (romfsInit()!=0)
     {
         printf ("Unable to initialize romfs\n");
         exit (0);
     }
-    */
+	chdir("sdmc:/");
+#endif
+    
     printf ("Initialization complete\n");
 
     osSetSpeedupEnable(1);    // Performance: use the higher clock speed for new 3DS.
@@ -1159,8 +1187,12 @@ void emulatorFinalize()
 #endif
     ptmSysmExit ();
 
-    //printf("romfsExit:\n");
-    //romfsExit();
+#ifndef EMBEDED_ROM
+#ifndef RELEASE
+    printf("romfsExit:\n");
+#endif
+    romfsExit();
+#endif
     
 #ifndef RELEASE
     printf("hidExit:\n");
@@ -1370,10 +1402,18 @@ void emulatorLoop()
 //---------------------------------------------------------
 int main()
 {
+#ifdef EMBEDED_ROM
+    mkdir("/snes", 0777);
+#endif
+
     emulatorInitialize();
     clearTopScreenWithLogo();
 
+#ifdef EMBEDED_ROM
+    emulatorLoadRom();
+#else
     menuSelectFile();
+#endif
 
     while (true)
     {
